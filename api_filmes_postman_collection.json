@@ -64,6 +64,130 @@
           ]
         },
         {
+          "name": "Filtrar filmes por idade",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes?idade=14",
+              "host": ["{{base_url}}"],
+              "path": ["filmes"],
+              "query": [
+                { "key": "idade", "value": "14" }
+              ]
+            },
+            "description": "Retorna filmes com faixaEtaria <= idade informada.\n\nExemplo: ?idade=14 retorna filmes permitidos para quem tem 14 anos.\n\nResposta esperada: 200 OK"
+          },
+          "response": [
+            {
+              "name": "200 — Filmes permitidos para a idade",
+              "originalRequest": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "123" }],
+                "url": {
+                  "raw": "{{base_url}}/filmes?idade=14",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes"],
+                  "query": [{ "key": "idade", "value": "14" }]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": 2,\n    \"titulo\": \"Interestelar\",\n    \"genero\": \"Ficcao Cientifica\",\n    \"duracao\": \"2h49min\",\n    \"faixaEtaria\": 12\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Filtrar filmes por gênero",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes?genero=Drama",
+              "host": ["{{base_url}}"],
+              "path": ["filmes"],
+              "query": [
+                { "key": "genero", "value": "Drama" }
+              ]
+            },
+            "description": "Retorna filmes do gênero informado.\n\nO valor é case-sensitive: 'Drama' é diferente de 'drama'.\n\nResposta esperada: 200 OK"
+          },
+          "response": [
+            {
+              "name": "200 — Filmes do gênero",
+              "originalRequest": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "123" }],
+                "url": {
+                  "raw": "{{base_url}}/filmes?genero=Drama",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes"],
+                  "query": [{ "key": "genero", "value": "Drama" }]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": 1,\n    \"titulo\": \"O Poderoso Chefao\",\n    \"genero\": \"Drama\",\n    \"duracao\": \"2h55min\",\n    \"faixaEtaria\": 18\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Filtrar filmes por idade e gênero",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes?idade=14&genero=Acao",
+              "host": ["{{base_url}}"],
+              "path": ["filmes"],
+              "query": [
+                { "key": "idade", "value": "14" },
+                { "key": "genero", "value": "Acao" }
+              ]
+            },
+            "description": "Filtro duplo: retorna filmes com faixaEtaria <= idade E do gênero informado.\n\nAmbos os parâmetros devem ser enviados juntos para ativar esse modo.\n\nResposta esperada: 200 OK"
+          },
+          "response": [
+            {
+              "name": "200 — Filmes filtrados por idade e gênero",
+              "originalRequest": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "123" }],
+                "url": {
+                  "raw": "{{base_url}}/filmes?idade=14&genero=Acao",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes"],
+                  "query": [
+                    { "key": "idade", "value": "14" },
+                    { "key": "genero", "value": "Acao" }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[]"
+            }
+          ]
+        },
+        {
           "name": "Buscar filme por ID",
           "request": {
             "method": "GET",
@@ -321,7 +445,7 @@
               "status": "Not Found",
               "code": 404,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "Filme não encontrado"
+              "body": "{\n  \"erro\": \"Filme não encontrado\"\n}"
             }
           ]
         }

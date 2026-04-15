@@ -1,4 +1,5 @@
-import 'package:apidart/database.dart';
+import 'package:apidart/filmes_database.dart';
+import 'package:apidart/atores_database.dart';
 import 'package:apidart/middleware.dart';
 import 'package:apidart/filmes_router.dart';
 import 'package:apidart/atores_router.dart';
@@ -6,15 +7,19 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 void main() async {
-  // Inicializa o banco de dados PostgreSQL (Neon)
-  final db = DatabaseHelper();
-  await db.initialize();
-  print('✅ Banco de dados PostgreSQL (Neon) inicializado');
+  // Inicializa os dois bancos
+  final filmeDb = DatabaseHelper();
+  await filmeDb.initialize();
+  print('✅ Tabela filmes inicializada');
+
+  final atorDb = AtorDatabaseHelper();
+  await atorDb.initialize();
+  print('✅ Tabela atores inicializada');
 
   // Combina os dois routers com Cascade
   final cascade = Cascade()
-      .add(atorRouter(db).call)
-      .add(filmeRouter(db).call);
+      .add(atorRouter(atorDb, filmeDb).call)
+      .add(filmeRouter(filmeDb).call);
 
   // Cria o pipeline: Middleware → Router
   final handler = Pipeline()
