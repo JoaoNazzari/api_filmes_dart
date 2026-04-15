@@ -1,0 +1,715 @@
+{
+  "info": {
+    "name": "Filmes API — Dart + Shelf",
+    "description": "Collection completa para a API REST de Filmes e Atores construída com Dart + Shelf.\n\nBase URL: http://localhost:8080\n\nEntidades:\n- Filme (pai): id, titulo, genero, duracao, faixaEtaria\n- Ator (filho): id, nome, personagem, idade, filmeId\n\nRelacionamento: 1 Filme → N Atores",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "filme_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "ator_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Filmes",
+      "item": [
+        {
+          "name": "Listar todos os filmes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes",
+              "host": ["{{base_url}}"],
+              "path": ["filmes"]
+            },
+            "description": "Retorna todos os filmes cadastrados, ordenados por ID decrescente.\n\nFiltros opcionais via query parameters:\n- ?idade=14 → filmes permitidos para 14 anos\n- ?genero=Acao → filmes do gênero Ação\n- ?idade=14&genero=Acao → combina os dois filtros\n\nResposta esperada: 200 OK"
+          },
+          "response": [
+            {
+              "name": "200 — Lista de filmes",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": 2,\n    \"titulo\": \"Interestelar\",\n    \"genero\": \"Ficcao Cientifica\",\n    \"duracao\": \"2h49min\",\n    \"faixaEtaria\": 12\n  },\n  {\n    \"id\": 1,\n    \"titulo\": \"O Poderoso Chefao\",\n    \"genero\": \"Drama\",\n    \"duracao\": \"2h55min\",\n    \"faixaEtaria\": 18\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Buscar filme por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes/{{filme_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["filmes", "{{filme_id}}"]
+            },
+            "description": "Busca um filme específico pelo ID.\n\nAltere a variável filme_id na collection para testar IDs diferentes.\n\nRespostas possíveis:\n- 200 OK → filme encontrado\n- 400 Bad Request → ID não é um número válido\n- 404 Not Found → filme não existe"
+          },
+          "response": [
+            {
+              "name": "200 — Filme encontrado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"titulo\": \"O Poderoso Chefao\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"2h55min\",\n  \"faixaEtaria\": 18\n}"
+            },
+            {
+              "name": "404 — Filme não encontrado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes/999",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "999"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Filme com ID 999 não encontrado.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Criar novo filme",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('filme_id', json.id);",
+                  "  console.log('filme_id atualizado para:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"O Poderoso Chefao\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"2h55min\",\n  \"faixaEtaria\": 18\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/filmes",
+              "host": ["{{base_url}}"],
+              "path": ["filmes"]
+            },
+            "description": "Cria um novo filme no banco de dados.\n\nCampos obrigatórios no body:\n- titulo (string)\n- genero (string)\n- duracao (string)\n- faixaEtaria (integer)\n\nO script de teste atualiza automaticamente a variável filme_id com o ID do filme criado.\n\nRespostas possíveis:\n- 201 Created → filme criado com sucesso\n- 400 Bad Request → campos obrigatórios faltando ou JSON inválido"
+          },
+          "response": [
+            {
+              "name": "201 — Filme criado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"titulo\": \"O Poderoso Chefao\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"2h55min\",\n  \"faixaEtaria\": 18\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/filmes",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"titulo\": \"O Poderoso Chefao\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"2h55min\",\n  \"faixaEtaria\": 18\n}"
+            },
+            {
+              "name": "400 — Campos obrigatórios faltando",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"titulo\": \"Sem faixa etaria\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/filmes",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Campos \\\"titulo\\\" e \\\"faixaEtaria\\\" são obrigatórios\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Atualizar filme",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"O Poderoso Chefao - Remasterizado\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"3h00min\",\n  \"faixaEtaria\": 18\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/filmes/{{filme_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["filmes", "{{filme_id}}"]
+            },
+            "description": "Atualiza um filme existente (substituição completa dos campos).\n\nTodos os campos são obrigatórios no body:\n- titulo (string)\n- genero (string)\n- duracao (string)\n- faixaEtaria (integer)\n\nRespostas possíveis:\n- 200 OK → atualizado com sucesso\n- 400 Bad Request → JSON inválido ou ID inválido\n- 404 Not Found → filme não existe"
+          },
+          "response": [
+            {
+              "name": "200 — Filme atualizado",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"titulo\": \"O Poderoso Chefao - Remasterizado\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"3h00min\",\n  \"faixaEtaria\": 18\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/filmes/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"titulo\": \"O Poderoso Chefao - Remasterizado\",\n  \"genero\": \"Drama\",\n  \"duracao\": \"3h00min\",\n  \"faixaEtaria\": 18\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remover filme",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes/{{filme_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["filmes", "{{filme_id}}"]
+            },
+            "description": "Remove permanentemente um filme pelo ID.\n\nRespostas possíveis:\n- 200 OK → deletado com sucesso\n- 400 Bad Request → ID inválido\n- 404 Not Found → filme não existe"
+          },
+          "response": [
+            {
+              "name": "200 — Filme deletado",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"mensagem\": \"Filme deletado com sucesso\"\n}"
+            },
+            {
+              "name": "404 — Filme não encontrado",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes/999",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "999"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "Filme não encontrado"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Atores",
+      "item": [
+        {
+          "name": "Listar todos os atores",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/atores",
+              "host": ["{{base_url}}"],
+              "path": ["atores"]
+            },
+            "description": "Retorna todos os atores cadastrados.\n\nResposta esperada: 200 OK"
+          },
+          "response": [
+            {
+              "name": "200 — Lista de atores",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/atores",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": 2,\n    \"nome\": \"Al Pacino\",\n    \"personagem\": \"Michael Corleone\",\n    \"idade\": 84,\n    \"filmeId\": 1\n  },\n  {\n    \"id\": 1,\n    \"nome\": \"Marlon Brando\",\n    \"personagem\": \"Vito Corleone\",\n    \"idade\": 80,\n    \"filmeId\": 1\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Buscar ator por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/atores/{{ator_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["atores", "{{ator_id}}"]
+            },
+            "description": "Busca um ator específico pelo ID.\n\nAltere a variável ator_id na collection para testar IDs diferentes.\n\nRespostas possíveis:\n- 200 OK → ator encontrado\n- 400 Bad Request → ID não é um número válido\n- 404 Not Found → ator não existe"
+          },
+          "response": [
+            {
+              "name": "200 — Ator encontrado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/atores/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"nome\": \"Marlon Brando\",\n  \"personagem\": \"Vito Corleone\",\n  \"idade\": 80,\n  \"filmeId\": 1\n}"
+            },
+            {
+              "name": "404 — Ator não encontrado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/atores/999",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores", "999"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Ator com ID 999 não encontrado.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Listar atores de um filme",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/filmes/{{filme_id}}/atores",
+              "host": ["{{base_url}}"],
+              "path": ["filmes", "{{filme_id}}", "atores"]
+            },
+            "description": "Lista todos os atores que pertencem a um filme específico.\n\nEssa é a rota que demonstra o relacionamento 1:N entre Filme (pai) e Ator (filho).\n\nRespostas possíveis:\n- 200 OK → lista de atores do filme (pode ser vazia)\n- 400 Bad Request → ID não é um número válido\n- 404 Not Found → filme não existe"
+          },
+          "response": [
+            {
+              "name": "200 — Atores do filme",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes/1/atores",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "1", "atores"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"id\": 1,\n    \"nome\": \"Marlon Brando\",\n    \"personagem\": \"Vito Corleone\",\n    \"idade\": 80,\n    \"filmeId\": 1\n  },\n  {\n    \"id\": 2,\n    \"nome\": \"Al Pacino\",\n    \"personagem\": \"Michael Corleone\",\n    \"idade\": 84,\n    \"filmeId\": 1\n  }\n]"
+            },
+            {
+              "name": "404 — Filme não encontrado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/filmes/999/atores",
+                  "host": ["{{base_url}}"],
+                  "path": ["filmes", "999", "atores"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Filme com ID 999 não encontrado.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Criar novo ator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('ator_id', json.id);",
+                  "  console.log('ator_id atualizado para:', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Marlon Brando\",\n  \"personagem\": \"Vito Corleone\",\n  \"idade\": 80,\n  \"filmeId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/atores",
+              "host": ["{{base_url}}"],
+              "path": ["atores"]
+            },
+            "description": "Cria um novo ator vinculado a um filme existente.\n\nCampos obrigatórios no body:\n- nome (string)\n- personagem (string)\n- idade (integer)\n- filmeId (integer) — deve ser o ID de um filme existente\n\nO script de teste atualiza automaticamente a variável ator_id com o ID do ator criado.\n\nRespostas possíveis:\n- 201 Created → ator criado com sucesso\n- 400 Bad Request → campos obrigatórios faltando ou JSON inválido\n- 404 Not Found → filme informado no filmeId não existe"
+          },
+          "response": [
+            {
+              "name": "201 — Ator criado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nome\": \"Marlon Brando\",\n  \"personagem\": \"Vito Corleone\",\n  \"idade\": 80,\n  \"filmeId\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/atores",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"nome\": \"Marlon Brando\",\n  \"personagem\": \"Vito Corleone\",\n  \"idade\": 80,\n  \"filmeId\": 1\n}"
+            },
+            {
+              "name": "400 — Campos obrigatórios faltando",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nome\": \"Sem filmeId\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/atores",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Campos \\\"nome\\\" e \\\"filmeId\\\" são obrigatórios\"\n}"
+            },
+            {
+              "name": "404 — Filme não encontrado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nome\": \"Ator Teste\",\n  \"personagem\": \"Personagem Teste\",\n  \"idade\": 30,\n  \"filmeId\": 999\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/atores",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Filme com ID 999 não encontrado.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Atualizar ator",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Marlon Brando Jr.\",\n  \"personagem\": \"Don Vito Corleone\",\n  \"idade\": 81,\n  \"filmeId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/atores/{{ator_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["atores", "{{ator_id}}"]
+            },
+            "description": "Atualiza um ator existente (substituição completa dos campos).\n\nTodos os campos são obrigatórios no body:\n- nome (string)\n- personagem (string)\n- idade (integer)\n- filmeId (integer) — deve ser o ID de um filme existente\n\nRespostas possíveis:\n- 200 OK → atualizado com sucesso\n- 400 Bad Request → JSON inválido ou ID inválido\n- 404 Not Found → ator não existe ou filme informado não existe"
+          },
+          "response": [
+            {
+              "name": "200 — Ator atualizado",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nome\": \"Marlon Brando Jr.\",\n  \"personagem\": \"Don Vito Corleone\",\n  \"idade\": 81,\n  \"filmeId\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/atores/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"nome\": \"Marlon Brando Jr.\",\n  \"personagem\": \"Don Vito Corleone\",\n  \"idade\": 81,\n  \"filmeId\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remover ator",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "123"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/atores/{{ator_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["atores", "{{ator_id}}"]
+            },
+            "description": "Remove permanentemente um ator pelo ID.\n\nRespostas possíveis:\n- 204 No Content → deletado com sucesso\n- 400 Bad Request → ID inválido\n- 404 Not Found → ator não existe"
+          },
+          "response": [
+            {
+              "name": "204 — Ator deletado",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/atores/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores", "1"]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            },
+            {
+              "name": "404 — Ator não encontrado",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "123" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/atores/999",
+                  "host": ["{{base_url}}"],
+                  "path": ["atores", "999"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"erro\": \"Ator não encontrado\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
