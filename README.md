@@ -1,25 +1,29 @@
-# API REST com Dart + SQLite — Guia Passo a Passo
+# API REST com Dart + PostgreSQL (Neon) — Guia Passo a Passo
 
 ## Sobre este projeto
 
-Neste guia você vai construir do zero uma **API REST completa** usando Dart puro com persistência em SQLite. A API gerencia **Filmes** (CRUD) e inclui middlewares de logging, CORS e autenticação por token.
+Neste guia você vai construir do zero uma **API REST completa** usando Dart puro com persistência em PostgreSQL via [Neon](https://neon.tech). A API gerencia **Filmes** e **Atores** (CRUD completo) com relacionamento pai-filho, além de middlewares de logging, CORS e autenticação por token.
 
 **Stack utilizada:**
 
 - **Dart SDK** — linguagem de programação
 - **shelf** — servidor HTTP leve (similar ao Express.js do Node)
 - **shelf_router** — sistema de rotas
-- **sqlite3** — banco de dados SQLite nativo
+- **postgres** — driver PostgreSQL para Dart (conexão com Neon)
 
 ---
 
 ## Pré-requisitos
 
-1. **Dart SDK** instalado (versão 3.0+)  
+1. **Dart SDK** instalado (versão 3.0+)
    - Verifique com: `dart --version`
    - Download: [https://dart.dev/get-dart](https://dart.dev/get-dart)
 
-2. **Postman** ou **Insomnia** instalado para testar a API  
+2. **Conta no Neon** para o banco de dados PostgreSQL
+   - Cadastre-se em: [https://neon.tech](https://neon.tech)
+   - Crie um projeto e copie a connection string (formato: `postgresql://user:password@host/dbname?sslmode=require`)
+
+3. **Postman** ou **Insomnia** para testar a API
    - Postman: [https://www.postman.com/downloads](https://www.postman.com/downloads)
    - Insomnia: [https://insomnia.rest/download](https://insomnia.rest/download)
    - Ou use a extensão **Thunder Client** no VS Code
@@ -28,18 +32,16 @@ Neste guia você vai construir do zero uma **API REST completa** usando Dart pur
 
 ## 1. Criando o projeto
 
-Abra o terminal e execute:
-
 ```bash
-dart create -t console api_filmes
-cd api_filmes
+dart create -t console apidart
+cd apidart
 ```
 
-Agora edite o `pubspec.yaml` para adicionar as dependências:
+Edite o `pubspec.yaml`:
 
 ```yaml
-name: api_filmes
-description: API REST CRUD de Filmes com Dart + SQLite
+name: apidart
+description: API REST CRUD de Filmes e Atores com Dart + PostgreSQL
 version: 1.0.0
 
 environment:
@@ -48,7 +50,7 @@ environment:
 dependencies:
   shelf: ^1.4.0
   shelf_router: ^1.1.0
-  sqlite3: ^2.1.0
+  postgres: ^3.0.0
 ```
 
 Instale as dependências:
@@ -61,277 +63,231 @@ dart pub get
 
 ## 2. Estrutura de pastas
 
-Organize o projeto assim:
-
 ```
-api_filmes/
+apidart/
 ├── bin/
-│   └── server.dart          ← Ponto de entrada
+│   └── server.dart              ← Ponto de entrada
 ├── lib/
-│   ├── database.dart        ← Conexão SQLite
-│   ├── middleware.dart       ← Logger, CORS e Auth
-│   ├── router.dart           ← Rotas CRUD
+│   ├── database.dart            ← Conexão e CRUD de Filmes (PostgreSQL)
+│   ├── ator_database.dart       ← Conexão e CRUD de Atores (PostgreSQL)
+│   ├── middleware.dart           ← Logger, CORS e Auth
+│   ├── filmes_router.dart        ← Rotas CRUD de Filmes
+│   ├── atores_router.dart        ← Rotas CRUD de Atores
 │   └── models/
-│       └── filme.dart        ← Modelo de dados
-├── pubspec.yaml
-└── filmes.db                 ← Banco (criado automaticamente)
+│       ├── filme.dart            ← Modelo Filme
+│       └── atores.dart           ← Modelo Ator
+├── .env                          ← Connection string do Neon (não versionar)
+└── pubspec.yaml
 ```
 
 ---
 
-## 3. Criando o Modelo (Filme)
+## 3. Variável de ambiente
 
-Crie o arquivo `lib/models/filme.dart`:
+Crie um arquivo `.env` na raiz do projeto (e adicione ao `.gitignore`):
+
+```
+postgresql://usuario:senha@host/dbname?sslmode=require
+```
+
+O `DatabaseHelper` e o `AtorDatabaseHelper` leem essa string para se conectar ao Neon.
+
+> ⚠️ **Nunca comite o arquivo `.env` com credenciais reais.**
+
+---
+
+## 4. Criando os Modelos
+
+### `lib/models/filme.dart`
 
 ```dart
 class Filme {
-  final int? id;
+  final int id;
   final String titulo;
   final String genero;
   final String duracao;
-  final int faixa_etaria;
+  final int faixaEtaria;
 
   Filme({
-    this.id,
+    required this.id,
     required this.titulo,
     required this.genero,
     required this.duracao,
-    required this.faixa_etaria,
+    required this.faixaEtaria,
   });
 
-  /// Cria um Filme a partir de um Map (banco de dados)
   factory Filme.fromMap(Map<String, dynamic> map) {
     return Filme(
-      id: map['id'] as int?,
+      id: map['id'] as int,
       titulo: map['titulo'] as String,
       genero: map['genero'] as String,
       duracao: map['duracao'] as String,
-      faixa_etaria: map['faixa_etaria'] as int,
+      faixaEtaria: map['faixaEtaria'] as int,
     );
   }
 
-  /// Converte para JSON (resposta da API)
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'titulo': titulo,
-      'genero': genero,
-      'duracao': duracao,
-      'faixa_etaria': faixa_etaria,
-    };
-  }
-}
-```
-
-**O que está acontecendo aqui?**
-
-- `fromMap` — converte um registro do banco para um objeto Dart
-- `toJson` — converte para devolver na resposta da API
-
----
-
-## 4. Configurando o Banco de Dados (SQLite)
-
-Crie o arquivo `lib/database.dart`:
-
-```dart
-import 'package:sqlite3/sqlite3.dart';
-import 'models/filme.dart';
-
-class DatabaseHelper {
-  late Database _db;
-
-  void initialize() {
-    _db = sqlite3.open('filmes.db');
-    _db.execute('''
-      CREATE TABLE IF NOT EXISTS filmes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titulo TEXT NOT NULL,
-        genero TEXT NOT NULL,
-        duracao TEXT NOT NULL,
-        faixa_etaria INTEGER NOT NULL DEFAULT 0
-      );
-    ''');
-  }
-
-  /// Retorna todos os filmes
-  List<Filme> getAll() {
-    final result = _db.select('SELECT * FROM filmes ORDER BY id DESC');
-    return result.map((row) => Filme.fromMap(row)).toList();
-  }
-
-  /// Filtra por idade permitida E gênero ao mesmo tempo
-  List<Filme> getByAgeAndGenre(int idade, String genero) {
-    final result = _db.select(
-      'SELECT * FROM filmes WHERE faixa_etaria <= ? AND genero = ? ORDER BY id DESC',
-      [idade, genero],
-    );
-    return result.map((row) => Filme.fromMap(row)).toList();
-  }
-
-  /// Retorna filmes permitidos para uma determinada idade
-  List<Filme> getAllowedByAge(int idadeUsuario) {
-    final result = _db.select(
-      'SELECT * FROM filmes WHERE faixa_etaria <= ? ORDER BY faixa_etaria DESC',
-      [idadeUsuario],
-    );
-    return result.map((row) => Filme.fromMap(row)).toList();
-  }
-
-  /// Retorna filmes filtrados pelo gênero
-  List<Filme> getByGenre(String genero) {
-    final result = _db.select(
-      'SELECT * FROM filmes WHERE genero = ? ORDER BY id DESC',
-      [genero],
-    );
-    return result.map((row) => Filme.fromMap(row)).toList();
-  }
-
-  /// Busca um Filme pelo ID
-  Filme? getById(int id) { ... }
-
-  /// Insere um novo Filme
-  Filme insert(Filme filme) { ... }
-
-  /// Atualiza um Filme existente
-  Filme? update(int id, Filme filme) { ... }
-
-  /// Deleta um Filme pelo ID
-  bool delete(int id) { ... }
-}
-```
-
-**Pontos importantes:**
-
-- `faixa_etaria` é armazenado como inteiro — a query usa `<=` para retornar filmes permitidos para a idade informada
-- Usamos `?` nas queries para evitar SQL Injection
-- `lastInsertRowId` retorna o ID auto-gerado após um INSERT
-
----
-
-## 5. Criando os Middlewares
-
-Crie o arquivo `lib/middleware.dart`. Este projeto possui três middlewares encadeados:
-
-```dart
-import 'package:shelf/shelf.dart';
-
-/// Middleware de logging — registra método, URL e tempo de resposta
-Middleware logMiddleware() { ... }
-
-/// Middleware de CORS — permite que frontends em outros domínios consumam a API
-Middleware corsMiddleware() { ... }
-
-/// Middleware de Autenticação — protege todas as rotas com token fixo
-Middleware authMiddleware() {
-  return (Handler innerHandler) {
-    return (Request request) async {
-      final authHeader = request.headers['Authorization'];
-      if (authHeader == '123') {
-        return await innerHandler(request);
-      } else {
-        return Response(
-          401,
-          body: 'Acesso negado: Token de autenticação inválido ou ausente.',
-          headers: {'Content-Type': 'text/plain'},
-        );
-      }
-    };
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'titulo': titulo,
+    'genero': genero,
+    'duracao': duracao,
+    'faixaEtaria': faixaEtaria,
   };
 }
 ```
 
-**O que cada middleware faz:**
-
-- **logMiddleware** — registra no console cada request com método, URL, status code e tempo de resposta
-- **corsMiddleware** — adiciona headers CORS em toda resposta e responde requisições `OPTIONS` (preflight) automaticamente
-- **authMiddleware** — exige o header `Authorization: 123` em toda requisição; retorna `401` caso contrário
-
----
-
-## 6. Definindo as Rotas (Router)
-
-Crie o arquivo `lib/router.dart`:
+### `lib/models/atores.dart`
 
 ```dart
-import 'dart:convert';
-import 'package:shelf/shelf.dart';
-import 'package:shelf_router/shelf_router.dart';
-import 'database.dart';
-import 'models/filme.dart';
+class Ator {
+  final int id;
+  String nome;
+  String personagem;
+  int idade;
+  int filmeId;
 
-Router filmeRouter(DatabaseHelper db) {
-  final router = Router();
-
-  // GET /filmes — Listar todos, com filtros opcionais por idade e/ou gênero
-  router.get('/filmes', (Request request) {
-    final params = request.requestedUri.queryParameters;
-    final idadeStr = params['idade'];
-    final genero = params['genero'];
-
-    List<Filme> filmes;
-
-    if (idadeStr != null && genero != null) {
-      filmes = db.getByAgeAndGenre(int.parse(idadeStr), genero);
-    } else if (idadeStr != null) {
-      filmes = db.getAllowedByAge(int.parse(idadeStr));
-    } else if (genero != null) {
-      filmes = db.getByGenre(genero);
-    } else {
-      filmes = db.getAll();
-    }
-
-    return Response.ok(
-      jsonEncode(filmes.map((f) => f.toJson()).toList()),
-      headers: {'Content-Type': 'application/json'},
-    );
+  Ator({
+    required this.id,
+    required this.nome,
+    required this.personagem,
+    required this.idade,
+    required this.filmeId,
   });
 
-  // POST /filmes — Criar novo filme
-  router.post('/filmes', (Request request) async { ... });
+  factory Ator.fromMap(Map<String, dynamic> map) {
+    return Ator(
+      id: map['id'] as int,
+      nome: map['nome'] as String,
+      personagem: map['personagem'] as String,
+      idade: map['idade'] as int,
+      filmeId: map['filmeId'] as int,
+    );
+  }
 
-  // PUT /filmes/<id> — Atualizar filme
-  router.put('/filmes/<id>', (Request request, String id) async { ... });
-
-  // DELETE /filmes/<id> — Deletar filme
-  router.delete('/filmes/<id>', (Request request, String id) { ... });
-
-  return router;
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'nome': nome,
+    'personagem': personagem,
+    'idade': idade,
+    'filmeId': filmeId,
+  };
 }
 ```
 
 ---
 
-## 7. Ponto de Entrada (Server)
+## 5. Configurando os Bancos de Dados
 
-Crie o arquivo `bin/server.dart`:
+### `lib/database.dart` — Filmes
+
+Gerencia a tabela `filmes` no PostgreSQL/Neon. Métodos disponíveis:
+
+| Método | Descrição |
+|--------|-----------|
+| `initialize()` | Cria a tabela se não existir |
+| `getAll()` | Retorna todos os filmes |
+| `getAllowedByAge(int idade)` | Retorna filmes com `faixaEtaria <= idade` |
+| `getByGenre(String genero)` | Retorna filmes pelo gênero |
+| `getByAgeAndGenre(int idade, String genero)` | Filtro duplo |
+| `getById(int id)` | Busca por ID |
+| `insert(Filme filme)` | Insere e retorna com ID gerado |
+| `update(int id, Filme filme)` | Atualiza e retorna o registro |
+| `delete(int id)` | Deleta; retorna `true` se removeu |
+
+### `lib/ator_database.dart` — Atores
+
+Gerencia a tabela `atores` no PostgreSQL/Neon. Métodos disponíveis:
+
+| Método | Descrição |
+|--------|-----------|
+| `initialize()` | Cria a tabela se não existir |
+| `getAll()` | Retorna todos os atores |
+| `getById(int id)` | Busca por ID |
+| `getByFilmeId(int filmeId)` | Retorna os atores de um filme |
+| `insert(Ator ator)` | Insere e retorna com ID gerado |
+| `update(int id, Ator ator)` | Atualiza e retorna o registro |
+| `delete(int id)` | Deleta; retorna `true` se removeu |
+
+---
+
+## 6. Criando os Middlewares
+
+Arquivo `lib/middleware.dart` com três middlewares encadeados:
+
+```dart
+import 'package:shelf/shelf.dart';
+
+Middleware logMiddleware() { ... }   // Loga método, URL, status e tempo
+Middleware corsMiddleware() { ... }  // Adiciona headers CORS em toda resposta
+Middleware authMiddleware() { ... }  // Exige header Authorization: 123
+```
+
+**O que cada um faz:**
+
+- **logMiddleware** — exibe no console cada request com método, caminho, status e tempo de resposta em ms
+- **corsMiddleware** — adiciona os headers `Access-Control-Allow-*` e responde requisições `OPTIONS` (preflight) com `200` imediatamente
+- **authMiddleware** — bloqueia qualquer requisição sem o header `Authorization: 123`, retornando `401`
+
+---
+
+## 7. Definindo as Rotas
+
+### `lib/filmes_router.dart`
+
+```dart
+Router filmeRouter(DatabaseHelper db) { ... }
+```
+
+### `lib/atores_router.dart`
+
+```dart
+Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) { ... }
+```
+
+> O router de atores recebe **dois** helpers: o próprio `AtorDatabaseHelper` e o `DatabaseHelper` de filmes — necessário para validar se o `filmeId` informado existe antes de criar/editar um ator.
+
+---
+
+## 8. Ponto de Entrada
+
+Arquivo `bin/server.dart`:
 
 ```dart
 import 'package:apidart/database.dart';
+import 'package:apidart/ator_database.dart';
 import 'package:apidart/middleware.dart';
-import 'package:apidart/router.dart';
+import 'package:apidart/filmes_router.dart';
+import 'package:apidart/atores_router.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 void main() async {
   final db = DatabaseHelper();
-  db.initialize();
-  print('✅ Banco de dados SQLite inicializado');
+  await db.initialize();
+
+  final atorDb = AtorDatabaseHelper();
+  await atorDb.initialize();
+
+  final cascade = Cascade()
+      .add(atorRouter(atorDb, db).call)
+      .add(filmeRouter(db).call);
 
   final handler = Pipeline()
       .addMiddleware(logMiddleware())
       .addMiddleware(corsMiddleware())
       .addMiddleware(authMiddleware())
-      .addHandler(filmeRouter(db));
+      .addHandler(cascade.handler);
 
   final server = await io.serve(handler, 'localhost', 8080);
   print('🚀 Servidor rodando em http://${server.address.host}:${server.port}');
 }
 ```
 
+**Por que `Cascade`?** Os dois routers são independentes. O `Cascade` tenta o primeiro router (`atorRouter`) e, se ele não reconhecer a rota (retornar 404), passa para o segundo (`filmeRouter`).
+
 ---
 
-## 8. Rodando o projeto
+## 9. Rodando o projeto
 
 ```bash
 dart run bin/server.dart
@@ -340,17 +296,17 @@ dart run bin/server.dart
 Saída esperada:
 
 ```
-✅ Banco de dados SQLite inicializado
+✅ Banco de dados PostgreSQL (Neon) inicializado
 🚀 Servidor rodando em http://localhost:8080
 ```
 
 ---
 
-## 9. Autenticação
+## 10. Autenticação
 
-Todas as rotas exigem o header `Authorization` com o valor `123`.
+Todas as rotas exigem o header `Authorization` com o valor exato `123`.
 
-Sem o header correto, a API retorna:
+Sem ele (ou com valor errado), a API retorna:
 
 ```
 HTTP 401 — Acesso negado: Token de autenticação inválido ou ausente.
@@ -364,27 +320,54 @@ No Postman, adicione em **Headers**:
 
 ---
 
-## 10. Testando com Postman / Insomnia
+## 11. Endpoints disponíveis
 
-> ⚠️ Lembre-se de incluir o header `Authorization: 123` em todas as requisições.
+### Filmes (pai)
+
+| Método | Rota | Descrição | Status |
+|--------|------|-----------|--------|
+| GET | `/filmes` | Listar todos | 200 |
+| GET | `/filmes/<id>` | Buscar por ID | 200 / 404 |
+| GET | `/filmes?idade=14` | Filtrar por faixa etária | 200 |
+| GET | `/filmes?genero=Acao` | Filtrar por gênero | 200 |
+| GET | `/filmes?idade=14&genero=Acao` | Filtrar por idade e gênero | 200 |
+| POST | `/filmes` | Criar novo filme | 201 / 400 |
+| PUT | `/filmes/<id>` | Atualizar filme | 200 / 404 |
+| DELETE | `/filmes/<id>` | Deletar filme | 200 / 404 |
+
+### Atores (filho)
+
+| Método | Rota | Descrição | Status |
+|--------|------|-----------|--------|
+| GET | `/atores` | Listar todos | 200 |
+| GET | `/atores/<id>` | Buscar por ID | 200 / 404 |
+| GET | `/filmes/<id>/atores` | Listar atores de um filme | 200 / 404 |
+| POST | `/atores` | Criar novo ator | 201 / 400 / 404 |
+| PUT | `/atores/<id>` | Atualizar ator | 200 / 404 |
+| DELETE | `/atores/<id>` | Deletar ator | 204 / 404 |
+
+> Todos os endpoints exigem o header `Authorization: 123`.
+
+---
+
+## 12. Testando com Postman / Insomnia
 
 ### Criar um filme (POST)
 
-- **Método:** POST  
-- **URL:** `http://localhost:8080/filmes`  
-- **Headers:** `Content-Type: application/json`, `Authorization: 123`  
-- **Body (JSON):**
+- **URL:** `POST http://localhost:8080/filmes`
+- **Headers:** `Content-Type: application/json`, `Authorization: 123`
+- **Body:**
 
 ```json
 {
   "titulo": "Interestelar",
   "genero": "Ficcao",
   "duracao": "2h49min",
-  "faixa_etaria": 12
+  "faixaEtaria": 12
 }
 ```
 
-**Resposta esperada (201 Created):**
+**Resposta (201):**
 
 ```json
 {
@@ -392,32 +375,37 @@ No Postman, adicione em **Headers**:
   "titulo": "Interestelar",
   "genero": "Ficcao",
   "duracao": "2h49min",
-  "faixa_etaria": 12
+  "faixaEtaria": 12
 }
 ```
 
-### Listar todos os filmes (GET)
+### Criar um ator (POST)
 
-- **URL:** `http://localhost:8080/filmes`
+- **URL:** `POST http://localhost:8080/atores`
+- **Body:**
 
-### Filtrar por idade (GET)
+```json
+{
+  "nome": "Matthew McConaughey",
+  "personagem": "Cooper",
+  "idade": 54,
+  "filmeId": 1
+}
+```
 
-Retorna filmes com `faixa_etaria` menor ou igual à idade informada:
+> O campo `filmeId` deve referenciar um filme existente. Caso contrário, a API retorna `404`.
 
-- **URL:** `http://localhost:8080/filmes?idade=14`
+### Listar atores de um filme (GET)
 
-### Filtrar por gênero (GET)
+- **URL:** `GET http://localhost:8080/filmes/1/atores`
 
-- **URL:** `http://localhost:8080/filmes?genero=Acao`
+### Filtrar filmes por idade e gênero (GET)
 
-### Filtrar por idade e gênero (GET)
+- **URL:** `GET http://localhost:8080/filmes?idade=14&genero=Acao`
 
-- **URL:** `http://localhost:8080/filmes?idade=14&genero=Acao`
+### Atualizar filme (PUT)
 
-### Atualizar (PUT)
-
-- **Método:** PUT  
-- **URL:** `http://localhost:8080/filmes/1`  
+- **URL:** `PUT http://localhost:8080/filmes/1`
 - **Body:**
 
 ```json
@@ -425,35 +413,27 @@ Retorna filmes com `faixa_etaria` menor ou igual à idade informada:
   "titulo": "Interestelar",
   "genero": "Ficcao Cientifica",
   "duracao": "2h49min",
-  "faixa_etaria": 12
+  "faixaEtaria": 12
 }
 ```
 
-### Deletar (DELETE)
+### Deletar ator (DELETE)
 
-- **Método:** DELETE  
-- **URL:** `http://localhost:8080/filmes/1`
-
-**Resposta:**
-
-```json
-{
-  "mensagem": "Filme deletado com sucesso"
-}
-```
+- **URL:** `DELETE http://localhost:8080/atores/1`
+- **Resposta:** `204 No Content`
 
 ---
 
-## 11. Testando com curl (Terminal)
+## 13. Testando com curl (Terminal)
 
 ```bash
 # Criar filme
 curl -X POST http://localhost:8080/filmes \
   -H "Content-Type: application/json" \
   -H "Authorization: 123" \
-  -d '{"titulo": "Interestelar", "genero": "Ficcao", "duracao": "2h49min", "faixa_etaria": 12}'
+  -d '{"titulo":"Interestelar","genero":"Ficcao","duracao":"2h49min","faixaEtaria":12}'
 
-# Listar todos
+# Listar todos os filmes
 curl http://localhost:8080/filmes -H "Authorization: 123"
 
 # Filtrar por idade
@@ -465,31 +445,27 @@ curl "http://localhost:8080/filmes?genero=Acao" -H "Authorization: 123"
 # Filtrar por idade e gênero
 curl "http://localhost:8080/filmes?idade=14&genero=Acao" -H "Authorization: 123"
 
-# Atualizar
-curl -X PUT http://localhost:8080/filmes/1 \
+# Criar ator
+curl -X POST http://localhost:8080/atores \
   -H "Content-Type: application/json" \
   -H "Authorization: 123" \
-  -d '{"titulo": "Interestelar", "genero": "Ficcao Cientifica", "duracao": "2h49min", "faixa_etaria": 12}'
+  -d '{"nome":"Matthew McConaughey","personagem":"Cooper","idade":54,"filmeId":1}'
 
-# Deletar
+# Listar atores de um filme
+curl http://localhost:8080/filmes/1/atores -H "Authorization: 123"
+
+# Atualizar ator
+curl -X PUT http://localhost:8080/atores/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: 123" \
+  -d '{"nome":"Matthew McConaughey","personagem":"Cooper","idade":55,"filmeId":1}'
+
+# Deletar ator
+curl -X DELETE http://localhost:8080/atores/1 -H "Authorization: 123"
+
+# Deletar filme
 curl -X DELETE http://localhost:8080/filmes/1 -H "Authorization: 123"
 ```
-
----
-
-## Resumo dos Endpoints
-
-| Método | Rota | Descrição | Status |
-|--------|------|-----------|--------|
-| GET | `/filmes` | Listar todos os filmes | 200 |
-| GET | `/filmes?idade=14` | Filtrar por faixa etária | 200 |
-| GET | `/filmes?genero=Acao` | Filtrar por gênero | 200 |
-| GET | `/filmes?idade=14&genero=Acao` | Filtrar por idade e gênero | 200 |
-| POST | `/filmes` | Criar novo filme | 201 / 400 |
-| PUT | `/filmes/<id>` | Atualizar filme | 200 / 404 |
-| DELETE | `/filmes/<id>` | Deletar filme | 200 / 404 |
-
-> Todos os endpoints exigem o header `Authorization: 123`.
 
 ---
 
@@ -497,6 +473,7 @@ curl -X DELETE http://localhost:8080/filmes/1 -H "Authorization: 123"
 
 - [Documentação do Shelf](https://pub.dev/packages/shelf)
 - [Shelf Router](https://pub.dev/packages/shelf_router)
-- [SQLite3 para Dart](https://pub.dev/packages/sqlite3)
+- [postgres para Dart](https://pub.dev/packages/postgres)
+- [Neon — PostgreSQL Serverless](https://neon.tech/docs)
 - [Postman Learning Center](https://learning.postman.com)
 - [OpenAPI / Swagger](https://swagger.io/specification/)
