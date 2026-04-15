@@ -11,13 +11,13 @@ class Ator {
     required this.personagem,
     required this.idade,
     required this.filmeId,
-  }); // ← ponto e vírgula aqui
+  }); 
 
-  factory Ator.fromMap(Map<String, dynamic> map) { // ← Ator, não Filme
+  factory Ator.fromMap(Map<String, dynamic> map) {
     return Ator(
       id: map['id'] as int,
       nome: map['nome'] as String,
-      idade: map['idade'] as int, // ← int, não String
+      idade: map['idade'] as int, 
       personagem: map['personagem'] as String,
       filmeId: map['filmeId'] as int,
     );

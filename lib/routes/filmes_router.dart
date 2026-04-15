@@ -1,43 +1,29 @@
-// lib/router.dart
-// Definição das rotas CRUD da API
-
+// lib/filmes_router.dart
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'database.dart';
-import 'models/filme.dart'; 
+import 'models/filme.dart';
 
 Router filmeRouter(DatabaseHelper db) {
   final router = Router();
 
-  // GET /filmes — Listar todos, filtrar por idade, filtrar por genero ou filtrar por idade e genero
-  // Uso: 
-      //filmes 
-      //filmes?idade=14
-      //filmes?genero=Acao
-      //filmes?idade=14&genero=Acao
-  router.get('/filmes', (Request request) {
+  // GET /filmes — Listar todos, filtrar por idade, gênero ou ambos
+  router.get('/filmes', (Request request) async {
     final params = request.requestedUri.queryParameters;
     final idadeStr = params['idade'];
     final genero = params['genero'];
 
     List<Filme> filmes;
 
-    // Caso 1: Filtro Duplo (Idade E Gênero)
     if (idadeStr != null && genero != null) {
-      filmes = db.getByAgeAndGenre(int.parse(idadeStr), genero);
-    } 
-    // Caso 2: Apenas Idade
-    else if (idadeStr != null) {
-      filmes = db.getAllowedByAge(int.parse(idadeStr));
-    } 
-    // Caso 3: Apenas Gênero
-    else if (genero != null) {
-      filmes = db.getByGenre(genero);
-    } 
-    // Caso 4: Nenhum filtro (Todos)
-    else {
-      filmes = db.getAll();
+      filmes = await db.getByAgeAndGenre(int.parse(idadeStr), genero);
+    } else if (idadeStr != null) {
+      filmes = await db.getAllowedByAge(int.parse(idadeStr));
+    } else if (genero != null) {
+      filmes = await db.getByGenre(genero);
+    } else {
+      filmes = await db.getAll();
     }
 
     return Response.ok(
@@ -46,21 +32,21 @@ Router filmeRouter(DatabaseHelper db) {
     );
   });
 
-  // GET /filmes — Buscar por id 
+  // GET /filmes/<id> — Buscar por ID
   router.get('/filmes/<id>', (Request request, String id) async {
     final filmeId = int.tryParse(id);
 
     if (filmeId == null) {
-      return Response(400, 
+      return Response(400,
         body: jsonEncode({'erro': 'O ID precisa ser um número válido.'}),
         headers: {'Content-Type': 'application/json'},
       );
     }
 
-    final filme = db.getById(filmeId);
+    final filme = await db.getById(filmeId);
 
     if (filme == null) {
-      return Response(404, 
+      return Response(404,
         body: jsonEncode({'erro': 'Filme com ID $filmeId não encontrado.'}),
         headers: {'Content-Type': 'application/json'},
       );
@@ -76,7 +62,7 @@ Router filmeRouter(DatabaseHelper db) {
   router.post('/filmes', (Request request) async {
     try {
       final body = await request.readAsString();
-      final data = jsonDecode(body) as Map<String, dynamic>; 
+      final data = jsonDecode(body) as Map<String, dynamic>;
 
       if (data['titulo'] == null || data['faixaEtaria'] == null) {
         return Response(400,
@@ -85,17 +71,18 @@ Router filmeRouter(DatabaseHelper db) {
         );
       }
 
-      final novoFilme = Filme( 
+      final novoFilme = Filme(
+        id: 0,
         titulo: data['titulo'] as String,
         genero: data['genero'] as String,
         duracao: data['duracao'] as String,
-        faixaEtaria: data['faixaEtaria'] as int, 
+        faixaEtaria: data['faixaEtaria'] as int,
       );
 
-      final criada = db.insert(novoFilme);
+      final criado = await db.insert(novoFilme);
 
       return Response(201,
-        body: jsonEncode(criada.toJson()),
+        body: jsonEncode(criado.toJson()),
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e) {
@@ -109,7 +96,12 @@ Router filmeRouter(DatabaseHelper db) {
   // PUT /filmes/<id> — Atualizar filme
   router.put('/filmes/<id>', (Request request, String id) async {
     final filmeId = int.tryParse(id);
-    if (filmeId == null) return Response(400, body: 'ID inválido');
+    if (filmeId == null) {
+      return Response(400,
+        body: jsonEncode({'erro': 'ID inválido'}),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
 
     try {
       final body = await request.readAsString();
@@ -123,24 +115,48 @@ Router filmeRouter(DatabaseHelper db) {
         faixaEtaria: data['faixaEtaria'] as int,
       );
 
-      final resultado = db.update(filmeId, filmeEditado);
-      if (resultado == null) return Response.notFound('Filme não encontrado');
+      final resultado = await db.update(filmeId, filmeEditado);
+      if (resultado == null) {
+        return Response(404,
+          body: jsonEncode({'erro': 'Filme não encontrado'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
 
-      return Response.ok(jsonEncode(resultado.toJson()), headers: {'Content-Type': 'application/json'});
+      return Response.ok(
+        jsonEncode(resultado.toJson()),
+        headers: {'Content-Type': 'application/json'},
+      );
     } catch (e) {
-      return Response(400, body: 'Erro: $e');
+      return Response(400,
+        body: jsonEncode({'erro': 'Erro: $e'}),
+        headers: {'Content-Type': 'application/json'},
+      );
     }
   });
 
   // DELETE /filmes/<id>
-  router.delete('/filmes/<id>', (Request request, String id) {
+  router.delete('/filmes/<id>', (Request request, String id) async {
     final filmeId = int.tryParse(id);
-    if (filmeId == null) return Response(400, body: 'ID inválido');
+    if (filmeId == null) {
+      return Response(400,
+        body: jsonEncode({'erro': 'ID inválido'}),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
 
-    final deletou = db.delete(filmeId);
-    if (!deletou) return Response.notFound('Filme não encontrado');
+    final deletou = await db.delete(filmeId);
+    if (!deletou) {
+      return Response(404,
+        body: jsonEncode({'erro': 'Filme não encontrado'}),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
 
-    return Response.ok(jsonEncode({'mensagem': 'Filme deletado com sucesso'}));
+    return Response.ok(
+      jsonEncode({'mensagem': 'Filme deletado com sucesso'}),
+      headers: {'Content-Type': 'application/json'},
+    );
   });
 
   return router;

@@ -1,17 +1,17 @@
-// lib/ator_router.dart
+// lib/atores_router.dart
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'ator_database.dart';
 import 'database.dart';
-import 'models/ator.dart';
+import 'models/atores.dart';
 
 Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
   final router = Router();
 
   // GET /atores — Listar todos
-  router.get('/atores', (Request request) {
-    final atores = atorDb.getAll();
+  router.get('/atores', (Request request) async {
+    final atores = await atorDb.getAll();
     return Response.ok(
       jsonEncode(atores.map((a) => a.toJson()).toList()),
       headers: {'Content-Type': 'application/json'},
@@ -19,7 +19,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
   });
 
   // GET /atores/<id> — Buscar por ID
-  router.get('/atores/<id>', (Request request, String id) {
+  router.get('/atores/<id>', (Request request, String id) async {
     final atorId = int.tryParse(id);
 
     if (atorId == null) {
@@ -29,7 +29,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
       );
     }
 
-    final ator = atorDb.getById(atorId);
+    final ator = await atorDb.getById(atorId);
 
     if (ator == null) {
       return Response(404,
@@ -45,7 +45,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
   });
 
   // GET /filmes/<id>/atores — Listar atores de um filme
-  router.get('/filmes/<id>/atores', (Request request, String id) {
+  router.get('/filmes/<id>/atores', (Request request, String id) async {
     final filmeId = int.tryParse(id);
 
     if (filmeId == null) {
@@ -55,7 +55,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
       );
     }
 
-    final filme = filmeDb.getById(filmeId);
+    final filme = await filmeDb.getById(filmeId);
     if (filme == null) {
       return Response(404,
         body: jsonEncode({'erro': 'Filme com ID $filmeId não encontrado.'}),
@@ -63,7 +63,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
       );
     }
 
-    final atores = atorDb.getByFilmeId(filmeId);
+    final atores = await atorDb.getByFilmeId(filmeId);
     return Response.ok(
       jsonEncode(atores.map((a) => a.toJson()).toList()),
       headers: {'Content-Type': 'application/json'},
@@ -83,8 +83,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
         );
       }
 
-      // Verifica se o filme existe
-      final filme = filmeDb.getById(data['filmeId'] as int);
+      final filme = await filmeDb.getById(data['filmeId'] as int);
       if (filme == null) {
         return Response(404,
           body: jsonEncode({'erro': 'Filme com ID ${data['filmeId']} não encontrado.'}),
@@ -93,13 +92,14 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
       }
 
       final novoAtor = Ator(
+        id: 0,
         nome: data['nome'] as String,
         personagem: data['personagem'] as String,
         idade: data['idade'] as int,
         filmeId: data['filmeId'] as int,
       );
 
-      final criado = atorDb.insert(novoAtor);
+      final criado = await atorDb.insert(novoAtor);
 
       return Response(201,
         body: jsonEncode(criado.toJson()),
@@ -127,8 +127,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
       final body = await request.readAsString();
       final data = jsonDecode(body) as Map<String, dynamic>;
 
-      // Verifica se o filme existe
-      final filme = filmeDb.getById(data['filmeId'] as int);
+      final filme = await filmeDb.getById(data['filmeId'] as int);
       if (filme == null) {
         return Response(404,
           body: jsonEncode({'erro': 'Filme com ID ${data['filmeId']} não encontrado.'}),
@@ -144,7 +143,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
         filmeId: data['filmeId'] as int,
       );
 
-      final resultado = atorDb.update(atorId, atorEditado);
+      final resultado = await atorDb.update(atorId, atorEditado);
       if (resultado == null) {
         return Response(404,
           body: jsonEncode({'erro': 'Ator não encontrado'}),
@@ -165,7 +164,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
   });
 
   // DELETE /atores/<id>
-  router.delete('/atores/<id>', (Request request, String id) {
+  router.delete('/atores/<id>', (Request request, String id) async {
     final atorId = int.tryParse(id);
     if (atorId == null) {
       return Response(400,
@@ -174,7 +173,7 @@ Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
       );
     }
 
-    final deletou = atorDb.delete(atorId);
+    final deletou = await atorDb.delete(atorId);
     if (!deletou) {
       return Response(404,
         body: jsonEncode({'erro': 'Ator não encontrado'}),
