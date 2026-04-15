@@ -1,18 +1,18 @@
 import 'package:apidart/filmes_database.dart';
 import 'package:apidart/atores_database.dart';
 import 'package:apidart/middleware.dart';
-import 'package:apidart/filmes_router.dart';
-import 'package:apidart/atores_router.dart';
+import 'package:apidart/routes/filmes_router.dart';
+import 'package:apidart/routes/atores_router.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 void main() async {
   // Inicializa os dois bancos
-  final filmeDb = DatabaseHelper();
+  final filmeDb = FilmesDatabaseHelper();
   await filmeDb.initialize();
   print('✅ Tabela filmes inicializada');
 
-  final atorDb = AtorDatabaseHelper();
+  final atorDb = AtoresDatabaseHelper();
   await atorDb.initialize();
   print('✅ Tabela atores inicializada');
 

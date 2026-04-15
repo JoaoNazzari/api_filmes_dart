@@ -2,10 +2,10 @@
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'database.dart';
-import 'models/filme.dart';
+import 'package:apidart/filmes_database.dart';
+import 'package:apidart/models/filmes.dart';
 
-Router filmeRouter(DatabaseHelper db) {
+Router filmeRouter(FilmesDatabaseHelper filmeDb) {
   final router = Router();
 
   // GET /filmes — Listar todos, filtrar por idade, gênero ou ambos
@@ -17,13 +17,13 @@ Router filmeRouter(DatabaseHelper db) {
     List<Filme> filmes;
 
     if (idadeStr != null && genero != null) {
-      filmes = await db.getByAgeAndGenre(int.parse(idadeStr), genero);
+      filmes = await filmeDb.getByAgeAndGenre(int.parse(idadeStr), genero);
     } else if (idadeStr != null) {
-      filmes = await db.getAllowedByAge(int.parse(idadeStr));
+      filmes = await filmeDb.getAllowedByAge(int.parse(idadeStr));
     } else if (genero != null) {
-      filmes = await db.getByGenre(genero);
+      filmes = await filmeDb.getByGenre(genero);
     } else {
-      filmes = await db.getAll();
+      filmes = await filmeDb.getAll();
     }
 
     return Response.ok(
@@ -43,7 +43,7 @@ Router filmeRouter(DatabaseHelper db) {
       );
     }
 
-    final filme = await db.getById(filmeId);
+    final filme = await filmeDb.getById(filmeId);
 
     if (filme == null) {
       return Response(404,
@@ -79,7 +79,7 @@ Router filmeRouter(DatabaseHelper db) {
         faixaEtaria: data['faixaEtaria'] as int,
       );
 
-      final criado = await db.insert(novoFilme);
+      final criado = await filmeDb.insert(novoFilme);
 
       return Response(201,
         body: jsonEncode(criado.toJson()),
@@ -115,7 +115,7 @@ Router filmeRouter(DatabaseHelper db) {
         faixaEtaria: data['faixaEtaria'] as int,
       );
 
-      final resultado = await db.update(filmeId, filmeEditado);
+      final resultado = await filmeDb.update(filmeId, filmeEditado);
       if (resultado == null) {
         return Response(404,
           body: jsonEncode({'erro': 'Filme não encontrado'}),
@@ -145,7 +145,7 @@ Router filmeRouter(DatabaseHelper db) {
       );
     }
 
-    final deletou = await db.delete(filmeId);
+    final deletou = await filmeDb.delete(filmeId);
     if (!deletou) {
       return Response(404,
         body: jsonEncode({'erro': 'Filme não encontrado'}),

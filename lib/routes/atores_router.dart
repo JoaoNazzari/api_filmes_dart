@@ -2,11 +2,11 @@
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'ator_database.dart';
-import 'database.dart';
-import 'models/atores.dart';
+import 'package:apidart/atores_database.dart';
+import 'package:apidart/filmes_database.dart';
+import 'package:apidart/models/atores.dart';
 
-Router atorRouter(AtorDatabaseHelper atorDb, DatabaseHelper filmeDb) {
+Router atorRouter(AtoresDatabaseHelper atorDb, FilmesDatabaseHelper filmeDb) {
   final router = Router();
 
   // GET /atores — Listar todos

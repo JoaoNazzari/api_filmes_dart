@@ -3,14 +3,14 @@
 
 import 'dart:io';
 import 'package:postgres/postgres.dart';
-import 'models/filme.dart';
+import 'models/filmes.dart';
 
-class DatabaseHelper {
+class FilmesDatabaseHelper {
   late Connection _db;
 
   Future<void> initialize() async {
     // Lê a connection string do arquivo .env na raiz do projeto
-    final envFile = File('.env');
+    final envFile = File(Platform.script.resolve('../.env').toFilePath());
     final connectionString = (await envFile.readAsString()).trim();
     final uri = Uri.parse(connectionString);
 
